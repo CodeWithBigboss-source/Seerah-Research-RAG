@@ -77,6 +77,31 @@ try:
 except Exception as e:
     print(f"✗ Failed: {e}")
 
+# ══════════════════════════════════════════════════════════
+# DATASET 3: Quran with surah/ayah numbers + English translations
+# Source: nazimali/quran
+# Why: Has proper reference numbers + multiple English translations
+#      Works together with the Arabic tafseer dataset we already have
+# ══════════════════════════════════════════════════════════
+print("\n" + "=" * 60)
+print("DATASET 3: Quran English Translations (nazimali/quran)")
+print("=" * 60)
+
+try:
+    quran_en = load_dataset("nazimali/quran", split="train")
+
+    print(f"Total entries: {len(quran_en)}")
+    print(f"Sample surah:  {quran_en[0]['surah']}")
+    print(f"Sample ayah:   {quran_en[0]['ayah']}")
+    print(f"Sample en:     {str(quran_en[0].get('translation-en-itani',''))[:100]}")
+
+    out_path = "datasets/raw/quran/quran_english.json"
+    quran_en.to_json(out_path)
+    print(f"\n✓ Saved → {out_path}")
+    print(f"  File size: {os.path.getsize(out_path) / 1024 / 1024:.1f} MB")
+
+except Exception as e:
+    print(f"✗ Failed: {e}")
 
 # ══════════════════════════════════════════════════════════
 # SUMMARY

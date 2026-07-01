@@ -66,17 +66,22 @@ def chunk_dataset(input_path: str, output_path: str, label: str):
 
 
 if __name__ == "__main__":
-    hadith_chunks = chunk_dataset(
+    hadith_chunks   = chunk_dataset(
         "datasets/processed/hadith_docs.json",
         "datasets/chunks/hadith_chunks.json",
         "Hadith"
     )
-    quran_chunks = chunk_dataset(
+    quran_ar_chunks = chunk_dataset(
         "datasets/processed/quran_docs.json",
-        "datasets/chunks/quran_chunks.json",
-        "Quran"
+        "datasets/chunks/quran_ar_chunks.json",
+        "Quran Arabic"
+    )
+    quran_en_chunks = chunk_dataset(
+        "datasets/processed/quran_english_docs.json",
+        "datasets/chunks/quran_en_chunks.json",
+        "Quran English"
     )
 
-    print(f"\nTotal chunks ready for embedding: "
-          f"{len(hadith_chunks) + len(quran_chunks):,}")
-    print("Next step: python embeddings/embedder.py")
+    total = len(hadith_chunks) + len(quran_ar_chunks) + len(quran_en_chunks)
+    print(f"\nTotal chunks ready for embedding: {total:,}")
+    print("Next: python embeddings/embedder.py")

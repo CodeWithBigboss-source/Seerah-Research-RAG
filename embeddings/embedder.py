@@ -68,29 +68,23 @@ if __name__ == "__main__":
     print(f"Device: {device}")
     print(f"Loading embedding model: {EMBED_MODEL}")
 
-    model = SentenceTransformer(EMBED_MODEL, device=device)
-    print(f"Model loaded.")
-
-    # ChromaDB persistent client
-    client     = chromadb.PersistentClient(path=CHROMA_PATH)
+    model  = SentenceTransformer(EMBED_MODEL, device=device)
+    client = chromadb.PersistentClient(path=CHROMA_PATH)
     collection = client.get_or_create_collection(
-        name     = COLLECTION,
-        metadata = {"hnsw:space": "cosine"}
+        name=COLLECTION,
+        metadata={"hnsw:space": "cosine"}
     )
 
-    # Load chunks
-    hadith_chunks = load_chunks("datasets/chunks/hadith_chunks.json")
-    quran_chunks  = load_chunks("datasets/chunks/quran_chunks.json")
+    hadith_chunks   = load_chunks("datasets/chunks/hadith_chunks.json")
+    quran_ar_chunks = load_chunks("datasets/chunks/quran_ar_chunks.json")
+    quran_en_chunks = load_chunks("datasets/chunks/quran_en_chunks.json")
 
-    # Embed and store
-    embed_and_store(hadith_chunks, model, collection, "Hadith")
-    embed_and_store(quran_chunks,  model, collection, "Quran")
+    embed_and_store(hadith_chunks,   model, collection, "Hadith")
+    embed_and_store(quran_ar_chunks, model, collection, "Quran Arabic")
+    embed_and_store(quran_en_chunks, model, collection, "Quran English")
 
-    # Final count
-    total = collection.count()
     print(f"\n{'='*50}")
     print(f"EMBEDDING COMPLETE")
-    print(f"  Total vectors in ChromaDB: {total:,}")
-    print(f"  Path: {CHROMA_PATH}")
+    print(f"  Total vectors in ChromaDB: {collection.count():,}")
     print(f"{'='*50}")
-    print("Next step: python retriever/retriever.py")
+    print("Next: python retriever/retriever.py")

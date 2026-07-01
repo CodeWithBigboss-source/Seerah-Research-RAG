@@ -142,15 +142,73 @@ def process_quran():
         print(f"  Sample text: {docs[0]['text'][:100]}...")
     return docs
 
+def process_quran_english():
+    print("\nProcessing Quran English dataset...")
+    path = "datasets/raw/quran/quran_english.json"
+
+    if not os.path.exists(path):
+        print(f"  Not found: {path}")
+        return []
+
+    docs = []
+    with open(path, "r", encoding="utf-8") as f:
+        for i, line in enumerate(f):
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            surah_num   = str(entry.get("surah", ""))
+            ayah_num    = str(entry.get("ayah", ""))
+            surah_name  = clean_text(entry.get("surah-name-en", ""))
+            ar_text     = clean_text(entry.get("arabic-text-uthmani", ""))
+            en_text     = clean_text(entry.get("translation-en-itani", ""))
+            surah_type  = entry.get("surah-type", "")
+
+            if not en_text:
+                continue
+
+            ref = f"Surah {surah_num} ({surah_name}) Ayah {ayah_num}"
+
+            docs.append({
+                "id":          make_id("quran_en", i),
+                "source_type": "quran",
+                "text":        en_text,
+                "arabic":      ar_text,
+                "translation": en_text,
+                "tafseer":     "",
+                "metadata": {
+                    "surah":      surah_num,
+                    "ayah":       ayah_num,
+                    "surah_name": surah_name,
+                    "surah_type": surah_type,
+                    "reference":  ref,
+                    "grading":    "Authentic",
+                    "language":   "en",
+                }
+            })
+
+    out = "datasets/processed/quran_english_docs.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(docs, f, ensure_ascii=False, indent=2)
+
+    print(f"  {len(docs):,} English Quran docs saved to {out}")
+    if docs:
+        print(f"  Sample ref:  {docs[0]['metadata']['reference']}")
+        print(f"  Sample text: {docs[0]['text'][:100]}...")
+    return docs
 
 if __name__ == "__main__":
-    hadith_docs = process_hadith()
-    quran_docs  = process_quran()
-    total = len(hadith_docs) + len(quran_docs)
+    hadith_docs      = process_hadith()
+    quran_docs       = process_quran()          # Arabic tafseer
+    quran_en_docs    = process_quran_english()  # English translations
+
+    total = len(hadith_docs) + len(quran_docs) + len(quran_en_docs)
     print(f"\n{'='*50}")
     print(f"PREPROCESSING COMPLETE")
-    print(f"  Hadith docs : {len(hadith_docs):,}")
-    print(f"  Quran docs  : {len(quran_docs):,}")
-    print(f"  Total       : {total:,}")
+    print(f"  Hadith docs        : {len(hadith_docs):,}")
+    print(f"  Quran Arabic docs  : {len(quran_docs):,}")
+    print(f"  Quran English docs : {len(quran_en_docs):,}")
+    print(f"  Total              : {total:,}")
     print(f"{'='*50}")
     print("Next: python chunking/chunker.py")
