@@ -1,11 +1,19 @@
+# Python
 venv/
 __pycache__/
 *.pyc
+*.pyo
 .env
-datasets/
+
+# Ignore data files but NOT Python scripts inside datasets/
+datasets/raw/
+datasets/processed/
+datasets/*.json
+datasets/*.csv
+
+# These stay ignored
 vector_db/
 models/
 *.pdf
-*.csv
 .ipynb_checkpoints/
 Thumbs.db
