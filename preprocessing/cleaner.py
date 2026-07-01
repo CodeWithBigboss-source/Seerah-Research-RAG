@@ -12,39 +12,34 @@ import unicodedata
 os.makedirs("datasets/processed", exist_ok=True)
 
 
-# ── Text cleaning ─────────────────────────────────────────
-
-def clean_text(text: str) -> str:
+def clean_text(text):
     if not text or not isinstance(text, str):
         return ""
-    # Normalize unicode (handles Arabic diacritics consistently)
     text = unicodedata.normalize("NFKC", text)
-    # Remove HTML tags if any
     text = re.sub(r"<[^>]+>", " ", text)
-    # Collapse whitespace
     text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
-def make_id(source: str, index: int) -> str:
+def get_field(entry, *keys):
+    """Try multiple key names, return first non-empty value."""
+    for key in keys:
+        val = entry.get(key, "")
+        if val:
+            return str(val)
+    return ""
+
+
+def make_id(source, index):
     return f"{source}_{index:06d}"
 
-
-# ══════════════════════════════════════════════════════════
-# HADITH PROCESSOR
-# Input:  datasets/raw/hadith/hadith_all.json
-# Output: datasets/processed/hadith_docs.json
-#
-# Each doc = one hadith (already a natural chunk)
-# Key field: grading → powers Truth Verification Mode
-# ══════════════════════════════════════════════════════════
 
 def process_hadith():
     print("Processing Hadith dataset...")
     path = "datasets/raw/hadith/hadith_all.json"
 
     if not os.path.exists(path):
-        print(f"  ✗ Not found: {path}")
+        print(f"  Not found: {path}")
         return []
 
     docs = []
@@ -55,21 +50,12 @@ def process_hadith():
             except json.JSONDecodeError:
                 continue
 
-            # Clean both language fields
-            en_text  = clean_text(entry.get("English_Text", "")  or
-                                   entry.get("english", "")       or
-                                   entry.get("text", "")          or "")
-            ar_text  = clean_text(entry.get("Arabic_Text", "")   or
-                                   entry.get("arabic", "")        or "")
-            book     = clean_text(entry.get("Book", "")          or
-                                   entry.get("book", "")          or "Unknown")
-            grading  = clean_text(entry.get("Grade", "")         or
-                                   entry.get("grade", "")         or
-                                   entry.get("Grading", "")       or "Unknown")
-            chapter  = clean_text(entry.get("Chapter_Title_English", "") or "")
-            ref_no   = str(entry.get("Hadith_number", "") or
-                           entry.get("hadith_number", "") or
-                           entry.get("id", i))
+            en_text = clean_text(get_field(entry, "English_Text", "english", "text"))
+            ar_text = clean_text(get_field(entry, "Arabic_Text", "arabic"))
+            book    = clean_text(get_field(entry, "Book", "book")) or "Unknown"
+            grading = clean_text(get_field(entry, "Grade", "grade", "Grading")) or "Unknown"
+            chapter = clean_text(get_field(entry, "Chapter_Title_English", "chapter"))
+            ref_no  = get_field(entry, "Hadith_number", "hadith_number", "id") or str(i)
 
             if not en_text:
                 continue
@@ -77,7 +63,7 @@ def process_hadith():
             docs.append({
                 "id":          make_id("hadith", i),
                 "source_type": "hadith",
-                "text":        en_text,          # used for embedding
+                "text":        en_text,
                 "arabic":      ar_text,
                 "metadata": {
                     "book":      book,
@@ -92,29 +78,19 @@ def process_hadith():
     with open(out, "w", encoding="utf-8") as f:
         json.dump(docs, f, ensure_ascii=False, indent=2)
 
-    print(f"  ✓ {len(docs):,} hadith documents saved → {out}")
-    print(f"  Sample:")
-    print(f"    text:      {docs[0]['text'][:120]}...")
-    print(f"    book:      {docs[0]['metadata']['book']}")
-    print(f"    grading:   {docs[0]['metadata']['grading']}")
+    print(f"  {len(docs):,} hadith documents saved to {out}")
+    print(f"  Sample book:    {docs[0]['metadata']['book']}")
+    print(f"  Sample grading: {docs[0]['metadata']['grading']}")
+    print(f"  Sample text:    {docs[0]['text'][:100]}...")
     return docs
 
-
-# ══════════════════════════════════════════════════════════
-# QURAN + TAFSEER PROCESSOR
-# Input:  datasets/raw/quran/quran_tafseer.json
-# Output: datasets/processed/quran_docs.json
-#
-# Each doc = one ayah (verse) — natural chunk boundary
-# Tafseer included as extended context
-# ══════════════════════════════════════════════════════════
 
 def process_quran():
     print("\nProcessing Quran + Tafseer dataset...")
     path = "datasets/raw/quran/quran_tafseer.json"
 
     if not os.path.exists(path):
-        print(f"  ✗ Not found: {path}")
+        print(f"  Not found: {path}")
         return []
 
     docs = []
@@ -125,17 +101,56 @@ def process_quran():
             except json.JSONDecodeError:
                 continue
 
-            # Try common column name variants
-            surah    = str(entry.get("surah_number", "")   or
-                           entry.get("chapter", "")         or
-                           entry.get("sura", "")            or "")
-            ayah     = str(entry.get("ayah_number", "")    or
-                           entry.get("verse", "")           or
-                           entry.get("aya", "")             or "")
-            ar_text  = clean_text(entry.get("arabic_text", "")  or
-                                   entry.get("arabic", "")       or "")
-            en_text  = clean_text(entry.get("english_text", "") or
-                                   entry.get("translation", "")  or
-                                   entry.get("text", "")         or "")
-            tafseer  = clean_text(entry.get("tafseer", "")      or
-                                   entry.get("tafsir", "")       or
+            surah   = get_field(entry, "surah_number", "chapter", "sura")
+            ayah    = get_field(entry, "ayah_number", "verse", "aya")
+            ar_text = clean_text(get_field(entry, "arabic_text", "arabic"))
+            en_text = clean_text(get_field(entry, "english_text", "translation", "text"))
+            tafseer = clean_text(get_field(entry, "tafseer", "tafsir", "explanation"))
+
+            embedding_text = en_text
+            if tafseer:
+                embedding_text = en_text + " " + tafseer
+
+            if not embedding_text.strip():
+                continue
+
+            ref = f"Surah {surah}:{ayah}" if surah and ayah else f"Quran_{i}"
+
+            docs.append({
+                "id":          make_id("quran", i),
+                "source_type": "quran",
+                "text":        embedding_text,
+                "arabic":      ar_text,
+                "translation": en_text,
+                "tafseer":     tafseer,
+                "metadata": {
+                    "surah":     surah,
+                    "ayah":      ayah,
+                    "reference": ref,
+                    "grading":   "Authentic",
+                    "language":  "en",
+                }
+            })
+
+    out = "datasets/processed/quran_docs.json"
+    with open(out, "w", encoding="utf-8") as f:
+        json.dump(docs, f, ensure_ascii=False, indent=2)
+
+    print(f"  {len(docs):,} Quran documents saved to {out}")
+    if docs:
+        print(f"  Sample ref:  {docs[0]['metadata']['reference']}")
+        print(f"  Sample text: {docs[0]['text'][:100]}...")
+    return docs
+
+
+if __name__ == "__main__":
+    hadith_docs = process_hadith()
+    quran_docs  = process_quran()
+    total = len(hadith_docs) + len(quran_docs)
+    print(f"\n{'='*50}")
+    print(f"PREPROCESSING COMPLETE")
+    print(f"  Hadith docs : {len(hadith_docs):,}")
+    print(f"  Quran docs  : {len(quran_docs):,}")
+    print(f"  Total       : {total:,}")
+    print(f"{'='*50}")
+    print("Next: python chunking/chunker.py")
