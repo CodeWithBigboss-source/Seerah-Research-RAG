@@ -86,7 +86,7 @@ def process_hadith():
 
 
 def process_quran():
-    print("\nProcessing Quran + Tafseer dataset...")
+    print("\nProcessing Quran Arabic Tafseer dataset...")
     path = "datasets/raw/quran/quran_tafseer.json"
 
     if not os.path.exists(path):
@@ -94,41 +94,51 @@ def process_quran():
         return []
 
     docs = []
+    skipped = 0
+
     with open(path, "r", encoding="utf-8") as f:
         for i, line in enumerate(f):
+            line = line.strip()
+            if not line:
+                continue
             try:
                 entry = json.loads(line)
             except json.JSONDecodeError:
+                skipped += 1
                 continue
 
-            surah   = get_field(entry, "surah_number", "chapter", "sura")
-            ayah    = get_field(entry, "ayah_number", "verse", "aya")
-            ar_text = clean_text(get_field(entry, "arabic_text", "arabic"))
-            en_text = clean_text(get_field(entry, "english_text", "translation", "text"))
-            tafseer = clean_text(get_field(entry, "tafseer", "tafsir", "explanation"))
+            # Exact column names confirmed from inspection
+            surah_name      = clean_text(entry.get("surah_name", ""))
+            revelation_type = entry.get("revelation_type", "")
+            ayah_arabic     = clean_text(entry.get("ayah", ""))
+            tafsir_book     = clean_text(entry.get("tafsir_book", ""))
+            tafsir_content  = clean_text(entry.get("tafsir_content", ""))
 
-            embedding_text = en_text
-            if tafseer:
-                embedding_text = en_text + " " + tafseer
+            # Build embedding text
+            embedding_text = ayah_arabic
+            if tafsir_content:
+                embedding_text = ayah_arabic + " " + tafsir_content
 
             if not embedding_text.strip():
+                skipped += 1
                 continue
 
-            ref = f"Surah {surah}:{ayah}" if surah and ayah else f"Quran_{i}"
-
             docs.append({
-                "id":          make_id("quran", i),
+                "id":          make_id("quran_ar", i),
                 "source_type": "quran",
                 "text":        embedding_text,
-                "arabic":      ar_text,
-                "translation": en_text,
-                "tafseer":     tafseer,
+                "arabic":      ayah_arabic,
+                "translation": "",
+                "tafseer":     tafsir_content,
                 "metadata": {
-                    "surah":     surah,
-                    "ayah":      ayah,
-                    "reference": ref,
-                    "grading":   "Authentic",
-                    "language":  "en",
+                    "surah":            surah_name,
+                    "ayah":             str(i),
+                    "surah_name":       surah_name,
+                    "reference":        surah_name,
+                    "tafsir_book":      tafsir_book,
+                    "revelation_type":  revelation_type,
+                    "grading":          "Authentic",
+                    "language":         "ar",
                 }
             })
 
@@ -136,10 +146,12 @@ def process_quran():
     with open(out, "w", encoding="utf-8") as f:
         json.dump(docs, f, ensure_ascii=False, indent=2)
 
-    print(f"  {len(docs):,} Quran documents saved to {out}")
+    print(f"  {len(docs):,} Arabic Quran docs saved to {out}")
+    print(f"  Skipped: {skipped}")
     if docs:
-        print(f"  Sample ref:  {docs[0]['metadata']['reference']}")
-        print(f"  Sample text: {docs[0]['text'][:100]}...")
+        print(f"  Sample surah:  {docs[0]['metadata']['surah']}")
+        print(f"  Sample tafsir: {docs[0]['metadata']['tafsir_book']}")
+        print(f"  Text length:   {len(docs[0]['text'])} chars")
     return docs
 
 def process_quran_english():
