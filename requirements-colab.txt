@@ -1,12 +1,14 @@
-chromadb==1.4.0
-rank-bm25==0.2.2
-pymupdf==1.25.1
-pytesseract==0.3.13
-pillow==11.0.0
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-python-dotenv==1.0.1
-pydantic==2.10.4
+# requirements-colab.txt
+# Only packages Colab does NOT pre-install
+# NO version pins — let Colab's resolver handle compatibility
+# NO torch, transformers, langchain, sentence-transformers — already installed
+# NO fastapi, uvicorn, pydantic, requests, starlette — Google owns these on Colab
+
+chromadb
+rank-bm25
+pymupdf
+pytesseract
+pillow
 langchain-text-splitters
 langchain-huggingface
 langchain-community
